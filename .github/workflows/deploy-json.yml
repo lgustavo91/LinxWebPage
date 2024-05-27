@@ -1,0 +1,37 @@
+name: Deploy JSON to VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install SSH client
+      run: sudo apt-get install -y sshpass
+
+    - name: Transfer JSON file to VM
+      env:
+        SSH_USER: ${{ secrets.SSH_USER }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        VM_HOST: ${{ secrets.VM_HOST }}
+      run: |
+        sshpass -p $SSH_PASSWORD scp -o StrictHostKeyChecking=no ./index.json $SSH_USER@$VM_HOST:/tmp/
+
+    - name: Move JSON file to Nginx directory
+      env:
+        SSH_USER: ${{ secrets.SSH_USER }}
+        SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+        VM_HOST: ${{ secrets.VM_HOST }}
+      run: |
+        sshpass -p $SSH_PASSWORD ssh -o StrictHostKeyChecking=no $SSH_USER@$VM_HOST << EOF
+        sudo mv /tmp/index.json /var/www/html/
+        sudo chown www-data:www-data /var/www/html/index.json
+        sudo chmod 644 /var/www/html/index.json
+        EOF
